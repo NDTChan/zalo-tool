@@ -29,8 +29,9 @@ public class MainClass {
 
 
     public static void main(String[] args) {
+        System.out.println("------------------------------HANDING IMPORT FILE--------------------------------------------");
         exportPhoneNumberToFile(IMPORT_NORMAL_PATH);
-        System.out.println("------------------------------HANDING ZIP FILE--------------------------------------------");
+        System.out.println("------------------------------HANDING IMPORT UNZIP FILE--------------------------------------------");
         exportPhoneNumberFromZipToFile();
     }
 
