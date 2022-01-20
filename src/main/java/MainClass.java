@@ -4,7 +4,6 @@ import net.lingala.zip4j.ZipFile;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -23,18 +22,32 @@ public class MainClass {
     private static final String[] SPECIAL_SPLIT_CHARACTERS = {"/", ";", ",", "-", "\n", "hoặc", "|"};
     private static final String[] PHONE_COLUMN_CHARACTERS = {"thoai", "phone", "thoại", "đt", "sđt", "sdt", "động", "di dong", "tel", "mobile"};
     private static final String PHONE_NUMBER_REGEX = "^(0|\\+84)(\\s|\\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\\d)(\\s|\\.)?(\\d{3})(\\s|\\.)?(\\d{3})$";
-    private static final String ROOT_PATH = "/Users/macbook/Documents/Ads/";
+    private static final String ROOT_PATH = "/Users/macbook/Documents/Ads/HINODE/";
+    private static final String IMPORT_NORMAL_PATH = "import";
+    private static final String IMPORT_UNZIP_PATH = "import-unzip";
+    private static final int MAX_LENGTH_LINES_TXT = 900000;
+
 
     public static void main(String[] args) {
-//        exportPhoneNumberToFile();
+        exportPhoneNumberToFile(IMPORT_NORMAL_PATH);
+        System.out.println("------------------------------HANDING ZIP FILE--------------------------------------------");
         exportPhoneNumberFromZipToFile();
     }
 
     public static void exportPhoneNumberFromZipToFile() {
         File zipDir = new File(ROOT_PATH + "file-zip");
-        File unzipDir = new File(ROOT_PATH + "import-unzip");
-        if (Objects.requireNonNull(zipDir.listFiles()).length > 0) {
-            unzipDir(zipDir, unzipDir);
+        File importUnzipDir = new File(ROOT_PATH + IMPORT_UNZIP_PATH);
+        int count = 0;
+        while (Objects.requireNonNull(zipDir.listFiles()).length > 0) {
+            count++;
+            System.out.println("Time run in while: " + count);
+            unzipDir(zipDir, importUnzipDir);
+            exportPhoneNumberToFile(IMPORT_UNZIP_PATH);
+        }
+        try {
+            FileUtils.cleanDirectory(importUnzipDir);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -52,7 +65,7 @@ public class MainClass {
                     ZipFile zipFile = new ZipFile(file);
                     if (zipFile.isEncrypted()) {
                         System.out.println("Zip file" + file.getName() + "has password");
-                        return;
+                        continue;
                     }
                     zipFile.extractAll(ROOT_PATH + "import-unzip");
 
@@ -69,8 +82,8 @@ public class MainClass {
     }
 
 
-    private static void exportPhoneNumberToFile() {
-        String importDirPath = ROOT_PATH + "import";
+    private static void exportPhoneNumberToFile(String dirImport) {
+        String importDirPath = ROOT_PATH + dirImport;
         File importDir = new File(importDirPath);
         File errorDir = new File(ROOT_PATH + "error");
         File noPhoneColumnDir = new File(ROOT_PATH + "no-phone-column");
@@ -82,7 +95,7 @@ public class MainClass {
 
         Set<File> lstImportFile = null;
         try {
-            lstImportFile = listFilesUsingFileWalkAndVisitor(importDirPath);
+            lstImportFile = listFilesUsingFileWalkAndVisitor(importDirPath, dirImport);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -111,7 +124,7 @@ public class MainClass {
                     }
                 } catch (Exception e) {
                     System.out.println("Some error when read file " + fExcel.getName() + " (error: " + e.getMessage() + "), coping to error folder\n");
-                    copyFile(fExcel, errorDir);
+                    copyOrMoveFile(fExcel, errorDir, true);
                     continue;
                 }
 
@@ -142,13 +155,13 @@ public class MainClass {
                             }
                         } catch (Exception e) {
                             System.out.println("Some error when get phoneColumnIndex: " + e.getMessage() + ", coping to error folder");
-                            copyFile(fExcel, errorDir);
+                            copyOrMoveFile(fExcel, errorDir, true);
                             continue;
                         }
 
                         if (phoneColumnIndex == -1) {
                             System.out.println("Can't find phone's column or because sheet is empty, coping to no-phone-column folder");
-                            copyFile(fExcel, noPhoneColumnDir);
+                            copyOrMoveFile(fExcel, noPhoneColumnDir, true);
                             continue;
                         }
 
@@ -219,7 +232,7 @@ public class MainClass {
             }
         } else {
             File lastFileModified = getLastModified(dirExportFile.getPath());
-            if (countLineFast(lastFileModified.getPath()) < 900000) {
+            if (countLineFast(lastFileModified.getPath()) < MAX_LENGTH_LINES_TXT) {
                 System.out.println("Keep using file " + lastFileModified.getName() + " to write");
                 return lastFileModified;
             }
@@ -264,7 +277,7 @@ public class MainClass {
         try (InputStream is = new BufferedInputStream(new FileInputStream(fileName))) {
             byte[] c = new byte[1024];
             int count = 0;
-            int readChars = 0;
+            int readChars;
             boolean endsWithoutNewLine = false;
             while ((readChars = is.read(c)) != -1) {
                 for (int i = 0; i < readChars; ++i) {
@@ -293,7 +306,7 @@ public class MainClass {
         return null;
     }
 
-    public static Set<File> listFilesUsingFileWalkAndVisitor(String dir) throws IOException {
+    public static Set<File> listFilesUsingFileWalkAndVisitor(String dir, String importFileType) throws IOException {
         Set<File> fileList = new HashSet<>();
         Files.walkFileTree(Paths.get(dir), new SimpleFileVisitor<>() {
             @Override
@@ -301,7 +314,11 @@ public class MainClass {
                 String fileName = file.getFileName().toString();
                 String extension = FilenameUtils.getExtension(fileName).toLowerCase();
                 if (extension.contains("zip") || extension.contains("rar")) {
-                    copyFile(file.toFile(), new File(ROOT_PATH + "file-zip"));
+                    if (IMPORT_NORMAL_PATH.equals(importFileType)) {
+                        copyOrMoveFile(file.toFile(), new File(ROOT_PATH + "file-zip"), true);
+                    } else if (IMPORT_UNZIP_PATH.equals(importFileType)) {
+                        copyOrMoveFile(file.toFile(), new File(ROOT_PATH + "file-zip"), false);
+                    }
                 }
                 if (!Files.isDirectory(file) && FilenameUtils.getExtension(fileName).toLowerCase().contains("xls")
                         && !fileName.equals(".DS_Store") && !fileName.startsWith("~$")) {
@@ -325,12 +342,15 @@ public class MainClass {
         return true;
     }
 
-    private static void copyFile(File file, File dirFile) {
+    private static void copyOrMoveFile(File file, File dirFile, boolean isCopy) {
         try {
-            FileUtils.copyFileToDirectory(file, dirFile);
+            if (isCopy) {
+                FileUtils.copyFileToDirectory(file, dirFile);
+            } else {
+                FileUtils.moveFileToDirectory(file, dirFile, false);
+            }
         } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
-
 }
