@@ -129,7 +129,7 @@ public class MainClass {
                 }
 
                 if (Objects.nonNull(excelWorkBook)) {
-                    File fileWriter = createOrReuseFile(ROOT_PATH);
+                    File fileWriter = createOrReuseFile();
                     Set<String> lstPhones = new HashSet<>();
 
                     for (Sheet sheet : excelWorkBook) {
@@ -217,8 +217,8 @@ public class MainClass {
         }
     }
 
-    private static File createOrReuseFile(String rootPath) {
-        File dirExportFile = new File(rootPath + "/exported/");
+    private static File createOrReuseFile() {
+        File dirExportFile = new File(ROOT_PATH + "/exported/");
         File fileWriter;
         File[] lstExportFile = dirExportFile.listFiles((dir, name) -> !name.equals(".DS_Store"));
         if (ArrayUtils.isEmpty(lstExportFile)) {
