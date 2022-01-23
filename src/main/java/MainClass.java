@@ -22,34 +22,42 @@ public class MainClass {
     private static final String[] SPECIAL_SPLIT_CHARACTERS = {"/", ";", ",", "-", "\n", "hoặc", "|"};
     private static final String[] PHONE_COLUMN_CHARACTERS = {"thoai", "phone", "thoại", "đt", "sđt", "sdt", "động", "di dong", "tel", "mobile"};
     private static final String PHONE_NUMBER_REGEX = "^(0|\\+84)(\\s|\\.)?((3[2-9])|(5[689])|(7[06-9])|(8[1-689])|(9[0-46-9]))(\\d)(\\s|\\.)?(\\d{3})(\\s|\\.)?(\\d{3})$";
-    private static final String ROOT_PATH = "/Users/macbook/Documents/Ads/HINODE/";
+    private static final String ROOT_PATH = "D:/tool-export-phone-number/";
     private static final String IMPORT_NORMAL_PATH = "import";
     private static final String IMPORT_UNZIP_PATH = "import-unzip";
     private static final int MAX_LENGTH_LINES_TXT = 900000;
 
 
     public static void main(String[] args) {
-        System.out.println("------------------------------HANDING IMPORT FILE--------------------------------------------");
-        exportPhoneNumberToFile(IMPORT_NORMAL_PATH);
-        System.out.println("------------------------------HANDING IMPORT UNZIP FILE--------------------------------------------");
-        exportPhoneNumberFromZipToFile();
+        if (Path.of(ROOT_PATH).toFile().exists()) {
+            System.out.println("------------------------------HANDING IMPORT FILE--------------------------------------------");
+            exportPhoneNumberToFile(IMPORT_NORMAL_PATH);
+            System.out.println("------------------------------HANDING IMPORT UNZIP FILE--------------------------------------------");
+            exportPhoneNumberFromZipToFile();
+        }
+
     }
 
     public static void exportPhoneNumberFromZipToFile() {
         File zipDir = new File(ROOT_PATH + "file-zip");
-        File importUnzipDir = new File(ROOT_PATH + IMPORT_UNZIP_PATH);
-        int count = 0;
-        while (Objects.requireNonNull(zipDir.listFiles()).length > 0) {
-            count++;
-            System.out.println("Time run in while: " + count);
-            unzipDir(zipDir, importUnzipDir);
-            exportPhoneNumberToFile(IMPORT_UNZIP_PATH);
+        if (zipDir.exists() && Objects.requireNonNull(zipDir.listFiles()).length > 0) {
+            File importUnzipDir = new File(ROOT_PATH + IMPORT_UNZIP_PATH);
+            int count = 0;
+            while (Objects.requireNonNull(zipDir.listFiles()).length > 0) {
+                count++;
+                System.out.println("Time run in while: " + count);
+                unzipDir(zipDir, importUnzipDir);
+                exportPhoneNumberToFile(IMPORT_UNZIP_PATH);
+            }
+            try {
+                FileUtils.cleanDirectory(importUnzipDir);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Nothing in file zip\n");
         }
-        try {
-            FileUtils.cleanDirectory(importUnzipDir);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
     }
 
     public static void unzipDir(File zipDir, File unzipDir) {
